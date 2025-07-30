@@ -44,11 +44,11 @@ async def update_catalog(catalog_id: str, catalog: Catalog):
 async def deactivate_catalog(catalog_id: str):
     return await catalogs_controller.deactivate_catalog(catalog_id)
 
-@router.get("/{catalog_id}/reviews", summary="Listar reseñas de un catálogo", tags=["⭐ Reviews"])
-async def get_reviews(catalog_id: str):
+#@router.get("/{catalog_id}/reviews", summary="Listar reseñas de un catálogo", tags=["⭐ Reviews"])
+#async def get_reviews(catalog_id: str):
     return {"message": "Funcionalidad reseñas aún no implementada"}
 
 # Aquí usamos Depends(validateuser) para validar usuario
-@router.post("/{catalog_id}/reviews", summary="Crear reseña para un catálogo", tags=["⭐ Reviews"], dependencies=[Depends(validateuser)])
-async def create_review(catalog_id: str, review_payload: dict):
+#@router.post("/{catalog_id}/reviews", summary="Crear reseña para un catálogo", tags=["⭐ Reviews"], dependencies=[Depends(validateuser)])
+#async def create_review(catalog_id: str, review_payload: dict):
     return {"message": "Funcionalidad reseñas aún no implementada"}

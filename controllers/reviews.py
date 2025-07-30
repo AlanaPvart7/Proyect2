@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from bson import ObjectId, errors
-from datetime import date
+from datetime import datetime
 from utils.mongodb import get_collection
 from models.reviews import Review
 from pipelines.reviews_pipelines import get_reviews_by_catalog_pipeline, get_review_by_id_pipeline
@@ -19,7 +19,7 @@ async def get_reviews_by_catalog_id(catalog_id: str) -> list[Review]:
 
         reviews = []
         for doc in docs:
-            review_data = {k: doc[k] for k in Review.__fields__.keys() if k in doc}
+            review_data = {k: doc[k] for k in Review._fields_.keys() if k in doc}
             reviews.append(Review(**review_data))
 
         return reviews
@@ -30,31 +30,12 @@ async def get_reviews_by_catalog_id(catalog_id: str) -> list[Review]:
 
 async def create_review(review: Review) -> Review:
     try:
-        review.review_date = date.today()  # Siempre hoy
-        review.active = True                # Siempre activo
-
-        # Validar que id_catalog sea un ObjectId válido en formato string
-        try:
-            _ = ObjectId(review.id_catalog)
-        except Exception:
-            raise HTTPException(status_code=400, detail="ID de catálogo inválido")
-
-        # Prepara el dict para insertar, excluyendo id
-        review_dict = review.model_dump(exclude={"id", "review_date", "active"})
-
-        # Agrega review_date y active al dict
-        review_dict["review_date"] = review.review_date
-        review_dict["active"] = review.active
-
-        # Inserta el documento en MongoDB
+        review.review_date = datetime.utcnow()
+        review.active = True
+        review_dict = review.model_dump(exclude={"id"})
         result = coll.insert_one(review_dict)
-
-        # Asigna el id generado como string a review.id
         review.id = str(result.inserted_id)
-
         return review
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al crear reseña: {str(e)}")
 
@@ -71,7 +52,7 @@ async def get_review_by_id(review_id: str) -> Review:
         if not docs:
             raise HTTPException(status_code=404, detail="Reseña no encontrada")
 
-        review_data = {k: docs[0][k] for k in Review.__fields__.keys() if k in docs[0]}
+        review_data = {k: docs[0][k] for k in Review._fields_.keys() if k in docs[0]}
         return Review(**review_data)
     except HTTPException:
         raise
@@ -113,4 +94,4 @@ async def delete_review(review_id: str) -> Review:
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al eliminar reseña: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al eliminar reseña: {str(e)}")

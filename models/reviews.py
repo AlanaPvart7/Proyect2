@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import date
+from datetime import datetime
 
 class Review(BaseModel):
     id: Optional[str] = Field(
@@ -32,7 +32,7 @@ class Review(BaseModel):
         examples=[5]
     )
 
-    review_date: Optional[date] = Field(
+    review_date: Optional[datetime] = Field(
         default=None,
         description="Fecha en que se hizo la reseña"
     )
@@ -51,6 +51,5 @@ class Review(BaseModel):
                 "rating": 5,
                 "review_date": "2024-01-15",
                 "active": True
-            }
-        }
-
+    }
+}
