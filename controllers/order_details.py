@@ -7,19 +7,18 @@ from utils.mongodb import get_collection
 # Conexión a las colecciones
 order_details_collection = get_collection("order_details")
 orders_collection = get_collection("orders")
-catalogs_collection = get_collection("catalogs")
+inventory_collection = get_collection("inventory")  
 
-# Funciones helper
+# Función para recalcular totales de la orden
 async def recalculate_order_totals(order_id: str) -> dict:
-    """Recalcular y actualizar los totales de una orden basado en sus detalles activos."""
     try:
         pipeline = [
             {"$match": {"id_order": order_id, "active": True}},
             {
                 "$lookup": {
-                    "from": "catalogs",
-                    "let": {"product_id": {"$toObjectId": "$id_producto"}},
-                    "pipeline": [{"$match": {"$expr": {"$eq": ["$_id", "$$product_id"]}}}],
+                    "from": "inventory",
+                    "let": {"inventory_id": {"$toObjectId": "$id_inventory"}},
+                    "pipeline": [{"$match": {"$expr": {"$eq": ["$_id", "$$inventory_id"]}}}],
                     "as": "product_info"
                 }
             },
@@ -39,15 +38,13 @@ async def recalculate_order_totals(order_id: str) -> dict:
                 "total_items": {"$sum": "$quantity"}
             }}
         ]
-        
-        # Ejecutar pipeline para calcular subtotales
         result = list(order_details_collection.aggregate(pipeline))
 
         if result and result[0]["subtotal"] > 0:
             subtotal = result[0]["subtotal"]
-            tax_rate = 0.15  # Tasa de impuestos
+            tax_rate = 0.15
             taxes = subtotal * tax_rate
-            discount = 0.0  # Si tuvieras lógica de descuentos, agregalo aquí
+            discount = 0.0
             total = subtotal + taxes - discount
 
             update_result = orders_collection.update_one(
@@ -72,7 +69,7 @@ async def recalculate_order_totals(order_id: str) -> dict:
                     "total": round(total, 2)
                 }
         else:
-            # Si no hay productos, resetear totales a cero
+            # No hay detalles activos, reiniciar totales
             orders_collection.update_one(
                 {"_id": ObjectId(order_id)},
                 {
@@ -86,17 +83,16 @@ async def recalculate_order_totals(order_id: str) -> dict:
                 }
             )
             return {"success": True, "subtotal": 0.0, "taxes": 0.0, "discount": 0.0, "total": 0.0}
+
     except Exception as e:
         return {"success": False, "message": str(e)}
 
-# Funciones CRUD
+# Crear detalle de orden
 async def create_order_detail(order_id: str, detail_data: CreateOrderDetail, requesting_user_id: str = None, is_admin: bool = False) -> dict:
-    """Crear un nuevo detalle de orden"""
     try:
         if not ObjectId.is_valid(order_id):
             return {"success": False, "message": "ID de orden inválido", "data": None}
 
-        # Verificar existencia de la orden
         order_info = orders_collection.find_one({"_id": ObjectId(order_id)})
         if not order_info:
             return {"success": False, "message": "Orden no encontrada", "data": None}
@@ -105,20 +101,20 @@ async def create_order_detail(order_id: str, detail_data: CreateOrderDetail, req
             if order_info["id_user"] != requesting_user_id:
                 return {"success": False, "message": "No tienes permiso para modificar esta orden", "data": None}
 
-        # Verificar existencia del producto
-        product_exists = catalogs_collection.find_one({"_id": ObjectId(detail_data.id_producto)})
+        # Validar existencia del inventario/producto
+        product_exists = inventory_collection.find_one({"_id": ObjectId(detail_data.id_inventory)})
         if not product_exists:
-            return {"success": False, "message": "Producto no encontrado", "data": None}
+            return {"success": False, "message": "Producto no encontrado en inventario", "data": None}
 
-        # Verificar si el producto ya está en la orden
+        # Verificar si ya existe el detalle activo para ese inventario en la orden
         existing_detail = order_details_collection.find_one({
-            "id_order": order_id, "id_producto": detail_data.id_producto, "active": True
+            "id_order": order_id,
+            "id_inventory": detail_data.id_inventory,
+            "active": True
         })
-
         if existing_detail:
             return {"success": False, "message": "Este producto ya está en la orden", "data": None}
 
-        # Crear detalle de orden
         detail_dict = detail_data.dict()
         detail_dict["id_order"] = order_id
         detail_dict["date_created"] = datetime.utcnow()
@@ -126,11 +122,9 @@ async def create_order_detail(order_id: str, detail_data: CreateOrderDetail, req
         detail_dict["active"] = True
 
         result = order_details_collection.insert_one(detail_dict)
-        
+
         if result.inserted_id:
-            # Recalcular totales de la orden
             totals_result = await recalculate_order_totals(order_id)
-            
             response_data = {"id": str(result.inserted_id)}
             if totals_result["success"]:
                 response_data["order_totals"] = {
@@ -139,16 +133,15 @@ async def create_order_detail(order_id: str, detail_data: CreateOrderDetail, req
                     "discount": totals_result["discount"],
                     "total": totals_result["total"]
                 }
-            
             return {"success": True, "message": "Producto agregado a la orden", "data": response_data}
-        
+
         return {"success": False, "message": "Error al agregar el producto", "data": None}
+
     except Exception as e:
         return {"success": False, "message": str(e), "data": None}
 
-# Funciones de consulta
+# Obtener detalles de una orden
 async def get_order_details(order_id: str, requesting_user_id: str = None, is_admin: bool = False) -> dict:
-    """Obtener detalles de una orden específica"""
     try:
         if not ObjectId.is_valid(order_id):
             return {"success": False, "message": "ID de orden inválido", "data": None}
@@ -165,18 +158,20 @@ async def get_order_details(order_id: str, requesting_user_id: str = None, is_ad
         details = list(order_details_collection.aggregate(pipeline))
 
         return {"success": True, "message": "Detalles obtenidos exitosamente", "data": {"order_id": order_id, "details": details}}
+
     except Exception as e:
         return {"success": False, "message": str(e), "data": None}
 
-# Funciones de actualización
+# Actualizar detalle de orden
 async def update_order_detail(order_id: str, detail_id: str, update_data: UpdateOrderDetail, requesting_user_id: str = None, is_admin: bool = False) -> dict:
-    """Actualizar un detalle de orden"""
     try:
         if not ObjectId.is_valid(order_id) or not ObjectId.is_valid(detail_id):
             return {"success": False, "message": "ID inválido", "data": None}
 
         detail_info = order_details_collection.find_one({
-            "_id": ObjectId(detail_id), "id_order": order_id, "active": True
+            "_id": ObjectId(detail_id),
+            "id_order": order_id,
+            "active": True
         })
 
         if not detail_info:
@@ -190,24 +185,30 @@ async def update_order_detail(order_id: str, detail_id: str, update_data: Update
         update_dict = update_data.dict()
         update_dict["date_updated"] = datetime.utcnow()
 
-        result = order_details_collection.update_one({"_id": ObjectId(detail_id)}, {"$set": update_dict})
+        result = order_details_collection.update_one(
+            {"_id": ObjectId(detail_id)},
+            {"$set": update_dict}
+        )
 
         if result.modified_count > 0:
             totals_result = await recalculate_order_totals(order_id)
             return {"success": True, "message": "Detalle actualizado exitosamente", "data": totals_result}
+
         return {"success": False, "message": "No se pudo actualizar el detalle", "data": None}
+
     except Exception as e:
         return {"success": False, "message": str(e), "data": None}
 
-# Funciones de eliminación
+# Eliminar (desactivar) detalle de orden
 async def delete_order_detail(order_id: str, detail_id: str, requesting_user_id: str = None, is_admin: bool = False) -> dict:
-    """Eliminar un detalle de orden"""
     try:
         if not ObjectId.is_valid(order_id) or not ObjectId.is_valid(detail_id):
             return {"success": False, "message": "ID inválido", "data": None}
 
         detail_info = order_details_collection.find_one({
-            "_id": ObjectId(detail_id), "id_order": order_id, "active": True
+            "_id": ObjectId(detail_id),
+            "id_order": order_id,
+            "active": True
         })
 
         if not detail_info:
@@ -219,7 +220,8 @@ async def delete_order_detail(order_id: str, detail_id: str, requesting_user_id:
                 return {"success": False, "message": "No tienes permiso para eliminar este detalle", "data": None}
 
         result = order_details_collection.update_one(
-            {"_id": ObjectId(detail_id)}, {"$set": {"active": False, "date_updated": datetime.utcnow()}}
+            {"_id": ObjectId(detail_id)},
+            {"$set": {"active": False, "date_updated": datetime.utcnow()}}
         )
 
         if result.modified_count > 0:
@@ -227,5 +229,6 @@ async def delete_order_detail(order_id: str, detail_id: str, requesting_user_id:
             return {"success": True, "message": "Detalle eliminado exitosamente", "data": totals_result}
 
         return {"success": False, "message": "No se pudo eliminar el detalle", "data": None}
+
     except Exception as e:
         return {"success": False, "message": str(e), "data": None}

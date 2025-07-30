@@ -14,9 +14,9 @@ class OrderDetail(BaseModel):
         examples=["507f1f77bcf86cd799439011"]
     )
 
-    id_producto: str = Field(
-        description="ID del producto",
-        examples=["507f1f77bcf86cd799439012"]
+    id_inventory: str = Field(
+    description="ID del inventario del producto",
+    examples=["507f1f77bcf86cd799439012"]
     )
 
     date_created: datetime = Field(
@@ -42,19 +42,20 @@ class OrderDetail(BaseModel):
 
     class Config:
         json_schema_extra = {
-            "example": {
-                "id_order": "507f1f77bcf86cd799439011",
-                "id_producto": "507f1f77bcf86cd799439012",
-                "quantity": 2,
-                "active": True
-            }
+        "example": {
+            "id_order": "507f1f77bcf86cd799439011",
+            "id_inventory": "507f1f77bcf86cd799439012",  
+            "quantity": 2,
+            "active": True
         }
+    }
+
 
 
 class CreateOrderDetail(BaseModel):
     """Modelo para crear un detalle de orden"""
-    id_producto: str = Field(
-        description="ID del producto",
+    id_inventory: str = Field(  # ← Aquí estaba id_producto
+        description="ID del inventario del producto",
         examples=["507f1f77bcf86cd799439012"]
     )
     
