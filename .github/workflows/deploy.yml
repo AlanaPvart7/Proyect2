@@ -35,7 +35,7 @@ jobs:
           MONGODB_URI: ${{ secrets.URI }} # tu código usa MONGODB_URI, el secreto se llama URI
           MONGO_DB_NAME: ${{ secrets.MONGO_DB_NAME }}
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          FIREBASE_CREDENTIAL_BASE64: ${{ secrets.FIREBASE_CREDENTIAL_BASE64 }}
+          FIREBASE_CREDENTIALS_BASE64: ${{ secrets.FIREBASE_CREDENTIALS_BASE64 }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
