@@ -10,7 +10,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Imprimir en consola
         run: echo "Hello World, GITHUB ACTIONS"
 
@@ -21,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up python 3.13
+      - name: Set up Python 3.13
         uses: actions/setup-python@v4
         with:
           python-version: '3.13'
@@ -33,11 +32,11 @@ jobs:
 
       - name: Test FastAPI imports
         env:
-          URI:
-        MONGO_DB_NAME: ${{secrets.}}
-        FIREBASE_API_KEY:
-        FIREBASE_CREDENTIAL_BASE64:
-        SECRET_KEY:
-        RAILWAY_TOKEN:
+          MONGODB_URI: ${{ secrets.URI }} # tu código usa MONGODB_URI, el secreto se llama URI
+          MONGO_DB_NAME: ${{ secrets.MONGO_DB_NAME }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_CREDENTIAL_BASE64: ${{ secrets.FIREBASE_CREDENTIAL_BASE64 }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           python -c "from main import app; print('FASTAPI app imported successfully')"
