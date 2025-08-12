@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy to Railway
 
 on:
   push:
@@ -12,4 +12,32 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Imprimir en consola
-        run: echo "hello world, GITHUB ACTIONS"
+        run: echo "Hello World, GITHUB ACTIONS"
+
+  test:
+    needs: helloworld
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up python 3.13
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install libraries
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Test FastAPI imports
+        env:
+          URI:
+        MONGO_DB_NAME: ${{secrets.}}
+        FIREBASE_API_KEY:
+        FIREBASE_CREDENTIAL_BASE64:
+        SECRET_KEY:
+        RAILWAY_TOKEN:
+        run: |
+          python -c "from main import app; print('FASTAPI app imported successfully')"
