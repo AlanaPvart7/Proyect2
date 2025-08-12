@@ -6,7 +6,7 @@ from controllers import inventory as inventory_controller
 
 router = APIRouter(prefix="/catalogs", tags=["🗃️ Catalogs"])
 
-# Dependencias para validar admin y user según header (puedes ajustar la lógica aquí)
+# Dependencias para validar admin y user según header 
 async def validateadmin(admin: Optional[str] = Header(None)):
     if admin != "true":
         raise HTTPException(status_code=403, detail="Admin header requerido")

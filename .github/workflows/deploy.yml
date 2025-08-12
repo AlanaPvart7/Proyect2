@@ -1,0 +1,16 @@
+name: Deploy to GitHub Pages
+
+on:
+    push:
+    branches: [ main ]
+
+jobs:
+    helloworld:
+    runs-on: ubuntu-latest
+
+    steps:
+        - uses: actions/checkout@v4
+
+        - name: Imprimir en consola
+        run: 
+            echo "hello world, GITHUB ACTIONS"
