@@ -43,8 +43,7 @@ jobs:
             RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           run: |
             python -c "from main import app; print('FASTAPI app imported successfully')"
- 
-            
+
         - name: Run tests
           env:
             MONGODB_URI: ${{ secrets.MONGODB_URI }}
@@ -53,5 +52,5 @@ jobs:
             FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
             FIREBASE_CREDENTIALS_BASE64: ${{ secrets.FIREBASE_CREDENTIALS_BASE64 }}
           run: |
-            pytest -v test_database.py
+            pytest --fixtures test_database.py 
 
