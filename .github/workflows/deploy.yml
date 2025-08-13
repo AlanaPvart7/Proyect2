@@ -32,6 +32,14 @@ jobs:
             python -m pip install --upgrade pip
             pip install -r requirements.txt
 
+        - name: Debug environment variables
+          run: |
+            echo "MONGODB_URI: $MONGODB_URI"
+            echo "MONGO_DB_NAME: $MONGO_DB_NAME"
+          env:
+            MONGODB_URI: ${{ secrets.MONGODB_URI }}
+            MONGO_DB_NAME: ${{ secrets.MONGO_DB_NAME }}
+
         - name: Test FastAPI imports
           env:
             MONGODB_URI: ${{ secrets.MONGODB_URI }}
