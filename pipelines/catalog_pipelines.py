@@ -97,9 +97,7 @@ def search_catalogs_pipeline(search_term: str, skip: int = 0, limit: int = 10) -
             ],
             "active": True
         }},
-        {"$addFields": {
-            "id_catalog_type_obj": {"$toObjectId": "$id_catalog_type"}
-        }},
+        {"$addFields": {"id_catalog_type_obj": {"$toObjectId": "$id_catalog_type"}}},
         {"$lookup": {
             "from": "catalogtypes",
             "localField": "id_catalog_type_obj",
