@@ -5,13 +5,13 @@ import re
 class CatalogType(BaseModel):
     id: Optional[str] = Field(
         default=None,
-        description="MongoDB ID "
+        description="MongoDB ID - Se genera automáticamente desde el _id de MongoDB, no es necesario enviarlo en POST"
     )
 
     description: str = Field(
         description="Descripción del tipo de catálogo",
         pattern=r"^[0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]+$",
-        examples=["Product","Special Box"]
+        examples=["Product","Bundle"]
     )
 
     active: bool = Field(
