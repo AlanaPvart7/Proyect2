@@ -1,12 +1,11 @@
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 import re
 
 class Catalog(BaseModel):
     id: Optional[str] = Field(
         default=None,
-        description="MongoDB ID - Se genera automáticamente desde el _id de MongoDB, no es necesario enviarlo en POST",
-        example="507f1f77bcf86cd799439011"
+        description="MongoDB ID"
     )
 
     id_catalog_type: str = Field(
@@ -14,38 +13,32 @@ class Catalog(BaseModel):
         examples=["507f1f77bcf86cd799439011"]
     )
 
-    id_artist: Optional[str] = Field(
-        default=None,
-        description="ID del artista asociado (opcional)",
-        examples=["507f1f77bcf86cd799439022"]
-    )
-
     name: str = Field(
+        description="Nombre del catálogo",
         min_length=1,
         max_length=100,
-        description="Nombre del catálogo",
-        examples=["Blonde – Frank Ocean (Vinilo)", "In Rainbows – Radiohead (Vinilo)"]
+        examples=["Consola Nintendo Switch 2", "Figura DMC"]
     )
 
     description: str = Field(
+        description="Descripción detallada del catálogo",
         min_length=1,
         max_length=500,
-        description="Descripción detallada del catálogo",
-        examples=["Álbum de R&B alternativo por Frank Ocean"]
+        examples=["Consola de videojuegos Nintendo Switch original"]
     )
 
     cost: float = Field(
+        description="Costo del producto",
         gt=0,
-        description="Costo del catálogo",
-        examples=[69.99, 79.99]
+        examples=[15000.50000, 549.99]
     )
 
     discount: int = Field(
-        default=0,
+        description="Descuento en porcentaje (0-100)",
         ge=0,
         le=100,
-        description="Descuento en porcentaje (0-100)",
-        examples=[0, 10, 15]
+        default=0,
+        examples=[10, 25, 0]
     )
 
     active: bool = Field(

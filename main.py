@@ -1,14 +1,8 @@
 import uvicorn
 import logging
-
 from fastapi import FastAPI, Request
 
-from controllers.users import create_user, login
-from models.users import User
-from models.login import Login
-
-from utils.security import validateuser, validateadmin
-
+# Routers
 from routes.catalogtypes import router as catalogtypes_router
 from routes.catalogs import router as catalogs_router
 from routes.order_statuses import router as order_statuses_router
@@ -18,16 +12,23 @@ from routes.inventory import router as inventory_router
 from routes.artist import router as artist_router
 from routes.reviews import router as reviews_router
 
+# Controllers para usuarios
+from controllers.users import create_user, login
+from models.users import User
+from models.login import Login
+from utils.security import validateuser, validateadmin
+
+# Inicializar app
 app = FastAPI()
 
-# Add CORS
+# Configuración CORS
 from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development; restrict in production
+    allow_origins=["*"],  
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Incluir routers
@@ -40,10 +41,11 @@ app.include_router(inventory_router)
 app.include_router(artist_router)
 app.include_router(reviews_router)
 
-
+# Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Rutas raíz y checks de salud
 @app.get("/")
 def read_root():
     return {"status": "healthy", "version": "0.0.0", "service": "tienda-api"}
@@ -73,6 +75,7 @@ def readiness_check():
     except Exception as e:
         return {"status": "not_ready", "error": str(e)}
 
+# Endpoints de usuarios
 @app.post("/users")
 async def create_user_endpoint(user: User) -> User:
     return await create_user(user)
@@ -81,23 +84,23 @@ async def create_user_endpoint(user: User) -> User:
 async def login_access(l: Login) -> dict:
     return await login(l)
 
-
+# Ejemplo de endpoint que requiere admin
 @app.get("/exampleadmin")
 @validateadmin
 async def example_admin(request: Request):
     return {
-        "message": "This is an example admin endpoint."
-        , "admin": request.state.admin
+        "message": "This is an example admin endpoint.",
+        "admin": request.state.admin
     }
 
+# Ejemplo de endpoint que requiere usuario autenticado
 @app.get("/exampleuser")
 @validateuser
 async def example_user(request: Request):
     return {
-        "message": "This is an example user endpoint."
-        ,"email": request.state.email
+        "message": "This is an example user endpoint.",
+        "email": request.state.email
     }
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-
