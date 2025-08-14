@@ -3,19 +3,14 @@ from utils.mongodb import get_collection
 from fastapi import HTTPException
 from bson import ObjectId, errors
 
-from pipelines.catalog_type_pipelines import (
-    get_catalog_type_pipeline,
-    validate_type_is_assigned_pipeline
-)
-
 coll = get_collection("catalogtypes")
-
-# ------------------ CRUD ------------------
 
 async def create_catalog_type(catalog_type: CatalogType) -> CatalogType:
     try:
-        catalog_type.description = catalog_type.description.strip().lower()
+        # Solo limpiamos espacios
+        catalog_type.description = catalog_type.description.strip()
 
+        # Verificación de duplicado insensible a mayúsculas
         existing = coll.find_one({
             "description": {"$regex": f"^{catalog_type.description}$", "$options": "i"},
             "active": True
@@ -30,76 +25,79 @@ async def create_catalog_type(catalog_type: CatalogType) -> CatalogType:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating catalog type: {str(e)}")
 
-
-async def get_catalog_types() -> list:
+async def get_catalog_types() -> list[CatalogType]:
     try:
-        pipeline = get_catalog_type_pipeline()
-        catalog_types = list(coll.aggregate(pipeline))
+        catalog_types = []
+        for doc in coll.find({"active": True}):
+            doc["id"] = str(doc["_id"])
+            del doc["_id"]
+            catalog_types.append(CatalogType(**doc))
         return catalog_types
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching catalog types: {str(e)}")
 
-
 async def get_catalog_type_by_id(catalog_type_id: str) -> CatalogType:
     try:
-        oid = ObjectId(catalog_type_id)
-        doc = coll.find_one({"_id": oid})
+        try:
+            oid = ObjectId(catalog_type_id)
+        except errors.InvalidId:
+            raise HTTPException(status_code=400, detail="Invalid ID format")
+
+        doc = coll.find_one({"_id": oid, "active": True})
         if not doc:
             raise HTTPException(status_code=404, detail="Catalog type not found")
         doc["id"] = str(doc["_id"])
         del doc["_id"]
         return CatalogType(**doc)
-    except errors.InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching catalog type: {str(e)}")
 
-
 async def update_catalog_type(catalog_type_id: str, catalog_type: CatalogType) -> CatalogType:
     try:
+        try:
+            oid = ObjectId(catalog_type_id)
+        except errors.InvalidId:
+            raise HTTPException(status_code=400, detail="Invalid ID format")
+
         catalog_type.description = catalog_type.description.strip().lower()
 
         existing = coll.find_one({
-            "description": {"$regex": f"^{catalog_type.description}$", "$options": "i"},
-            "_id": {"$ne": ObjectId(catalog_type_id)},
+            "description": catalog_type.description,
+            "_id": {"$ne": oid},
             "active": True
         })
         if existing:
             raise HTTPException(status_code=400, detail="Catalog type already exists")
 
         result = coll.update_one(
-            {"_id": ObjectId(catalog_type_id)},
+            {"_id": oid},
             {"$set": catalog_type.model_dump(exclude={"id"})}
         )
         if result.modified_count == 0:
             raise HTTPException(status_code=404, detail="Catalog type not found")
 
         return await get_catalog_type_by_id(catalog_type_id)
-    except errors.InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating catalog type: {str(e)}")
 
-
-async def deactivate_catalog_type(catalog_type_id: str) -> dict:
+async def deactivate_catalog_type(catalog_type_id: str) -> CatalogType:
     try:
-        pipeline = validate_type_is_assigned_pipeline(catalog_type_id)
-        assigned = list(coll.aggregate(pipeline))
+        try:
+            oid = ObjectId(catalog_type_id)
+        except errors.InvalidId:
+            raise HTTPException(status_code=400, detail="Invalid ID format")
 
-        if not assigned:
+        result = coll.update_one({"_id": oid}, {"$set": {"active": False}})
+        if result.modified_count == 0:
             raise HTTPException(status_code=404, detail="Catalog type not found")
 
-        if assigned[0]["number_of_products"] > 0:
-            coll.update_one(
-                {"_id": ObjectId(catalog_type_id)},
-                {"$set": {"active": False}}
-            )
-            return {"message": "Catalog type is assigned to products and has been deactivated"}
-        else:
-            coll.delete_one({"_id": ObjectId(catalog_type_id)})
-            return {"message": "Catalog type deleted successfully"}
-
-    except errors.InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+        return await get_catalog_type_by_id(catalog_type_id)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deactivating catalog type: {str(e)}")
+    

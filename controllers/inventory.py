@@ -19,7 +19,7 @@ async def create_inventory_controller(item: CreateInventory) -> dict:
     try:
         item_dict = item.dict()
 
-        # 🔥 Conversión obligatoria: date → datetime
+        # Conversión obligatoria: date → datetime
         item_dict["entry_date"] = datetime.combine(item_dict["entry_date"], datetime.min.time())
 
         item_dict["active"] = True

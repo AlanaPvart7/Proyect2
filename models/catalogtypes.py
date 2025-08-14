@@ -1,18 +1,20 @@
-from pydantic import BaseModel, Field
+from  pydantic import BaseModel, Field, field_validator
 from typing import Optional
+import re
 
 class CatalogType(BaseModel):
     id: Optional[str] = Field(
         default=None,
-        description="ID autogenerado por MongoDB",
-        example="64b8d9ecf0c5eaa5e2a04f87"
+        description="MongoDB ID "
     )
+
     description: str = Field(
-        description="Descripción del tipo de catálogo (Vinilo, CD, etc.)",
-        example="Vinilo"
+        description="Descripción del tipo de catálogo",
+        pattern=r"^[0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]+$",
+        examples=["Product","Special Box"]
     )
-    active: Optional[bool] = Field(
+
+    active: bool = Field(
         default=True,
-        description="Estado activo del tipo de catálogo",
-        example=True
+        description="Estado activo del tipo de catálogo"
     )

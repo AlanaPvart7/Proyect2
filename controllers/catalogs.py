@@ -12,33 +12,27 @@ from pipelines.catalog_pipelines import (
 
 coll = get_collection("catalogs")
 catalog_types_coll = get_collection("catalogtypes")
-inventory_coll = get_collection("inventory")
 
 
 async def create_catalog(catalog: Catalog) -> Catalog:
     try:
-        # Validar formato de ObjectId del tipo de catálogo
         try:
-            _ = ObjectId(catalog.id_catalog_type)
+            catalog_type_oid = ObjectId(catalog.id_catalog_type)
         except errors.InvalidId:
             raise HTTPException(status_code=400, detail="Invalid catalog type ID format")
 
-        # Validar existencia y estado activo del tipo de catálogo
         pipeline = validate_catalog_type_pipeline(catalog.id_catalog_type)
         catalog_type_result = list(catalog_types_coll.aggregate(pipeline))
         if not catalog_type_result:
             raise HTTPException(status_code=400, detail="Catalog type not found or inactive")
 
-        # Limpiar datos
         catalog.name = catalog.name.strip()
         catalog.description = catalog.description.strip()
 
-        # Verificar duplicados
         existing = coll.find_one({"name": {"$regex": f"^{catalog.name}$", "$options": "i"}})
         if existing:
             raise HTTPException(status_code=400, detail="Catalog with this name already exists")
 
-        # Insertar catálogo
         catalog_dict = catalog.model_dump(exclude={"id"})
         inserted = coll.insert_one(catalog_dict)
         catalog.id = str(inserted.inserted_id)
@@ -80,6 +74,7 @@ async def get_catalog_by_id(catalog_id: str) -> dict:
             raise HTTPException(status_code=404, detail="Catalog not found")
 
         return result[0]
+
     except HTTPException:
         raise
     except Exception as e:
@@ -91,7 +86,6 @@ async def get_catalogs_by_type(catalog_type_description: str, skip: int = 0, lim
         pipeline = get_catalogs_by_type_pipeline(catalog_type_description, skip, limit)
         catalogs_raw = list(coll.aggregate(pipeline))
 
-        # Contar total
         count_pipeline = [
             {"$lookup": {
                 "from": "catalogtypes",
@@ -124,11 +118,11 @@ async def update_catalog(catalog_id: str, catalog: Catalog) -> dict:
     try:
         try:
             catalog_oid = ObjectId(catalog_id)
-            _ = ObjectId(catalog.id_catalog_type)
+            catalog_type_oid = ObjectId(catalog.id_catalog_type)
         except errors.InvalidId:
             raise HTTPException(status_code=400, detail="Invalid ID format")
 
-        # Validar existencia y estado activo del tipo catálogo
+        # Validar existencia y estado activo del tipo catálogo con pipeline
         pipeline = validate_catalog_type_pipeline(catalog.id_catalog_type)
         catalog_type_result = list(catalog_types_coll.aggregate(pipeline))
         if not catalog_type_result:
@@ -137,7 +131,6 @@ async def update_catalog(catalog_id: str, catalog: Catalog) -> dict:
         catalog.name = catalog.name.strip()
         catalog.description = catalog.description.strip()
 
-        # Verificar duplicados
         existing = coll.find_one({
             "name": {"$regex": f"^{catalog.name}$", "$options": "i"},
             "_id": {"$ne": catalog_oid}
@@ -152,6 +145,7 @@ async def update_catalog(catalog_id: str, catalog: Catalog) -> dict:
             raise HTTPException(status_code=404, detail="Catalog not found")
 
         return await get_catalog_by_id(catalog_id)
+
     except HTTPException:
         raise
     except Exception as e:
@@ -169,14 +163,17 @@ async def deactivate_catalog(catalog_id: str) -> dict:
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Catalog not found")
 
-        # Desactivar inventario asociado
-        inventory_coll.update_many({"catalog_id": catalog_oid}, {"$set": {"active": False}})
+        # desactivar 
+        inventory_coll = get_collection("inventory")
+        await inventory_coll.update_many({"catalog_id": catalog_oid}, {"$set": {"active": False}})
 
         return await get_catalog_by_id(catalog_id)
+
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deactivating catalog: {str(e)}")
+
 
 
 async def search_catalogs(q: str, skip: int = 0, limit: int = 10) -> dict:

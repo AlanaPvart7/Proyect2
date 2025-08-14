@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, HttpUrl
 from typing import Optional
+import re
 
 class Catalog(BaseModel):
     id: Optional[str] = Field(
