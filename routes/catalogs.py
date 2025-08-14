@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends
 from models.catalogs import Catalog
 from controllers.catalogs import (
     create_catalog,
@@ -7,13 +7,15 @@ from controllers.catalogs import (
     update_catalog,
     deactivate_catalog
 )
-from utils.security import validateuser  # mismo decorador que tu inge
+from utils.security import validate_token  # <- solo validar usuario autenticado
 
 router = APIRouter()
 
 @router.post("/catalogs", response_model=Catalog, tags=["📋 Catalogs"])
-@validateuser
-async def create_catalog_endpoint(request: Request, catalog: Catalog) -> Catalog:
+async def create_catalog_endpoint(
+    catalog: Catalog,
+    user: dict = Depends(validate_token)  # <- valida que esté autenticado
+) -> Catalog:
     """Crear un nuevo catálogo"""
     return await create_catalog(catalog)
 
@@ -28,13 +30,18 @@ async def get_catalog_by_id_endpoint(catalog_id: str) -> Catalog:
     return await get_catalog_by_id(catalog_id)
 
 @router.put("/catalogs/{catalog_id}", response_model=Catalog, tags=["📋 Catalogs"])
-@validateuser
-async def update_catalog_endpoint(request: Request, catalog_id: str, catalog: Catalog) -> Catalog:
+async def update_catalog_endpoint(
+    catalog_id: str,
+    catalog: Catalog,
+    user: dict = Depends(validate_token)
+) -> Catalog:
     """Actualizar un catálogo"""
     return await update_catalog(catalog_id, catalog)
 
 @router.delete("/catalogs/{catalog_id}", response_model=Catalog, tags=["📋 Catalogs"])
-@validateuser
-async def deactivate_catalog_endpoint(request: Request, catalog_id: str) -> Catalog:
+async def deactivate_catalog_endpoint(
+    catalog_id: str,
+    user: dict = Depends(validate_token)
+) -> Catalog:
     """Desactivar un catálogo"""
     return await deactivate_catalog(catalog_id)
