@@ -45,3 +45,5 @@ docs/
 *.cfg
 *.ini
 secrets/
+# .gitignore
+.pytest_cache/
