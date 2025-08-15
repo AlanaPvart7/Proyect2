@@ -35,7 +35,7 @@ def get_collection(col):
     client = get_mongo_client()
     return client[DB][col]
 
-def test_connection():
+def t_connection():
     try:
         client = get_mongo_client()
         client.admin.command("ping")
