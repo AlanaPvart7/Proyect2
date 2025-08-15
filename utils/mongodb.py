@@ -43,3 +43,6 @@ def t_connection():
     except Exception as e:
         print(f"Error connecting to MongoDB: {e}")
         return False
+    
+    # Alias para compatibilidad con /ready de Railway
+test_connection = t_connection
